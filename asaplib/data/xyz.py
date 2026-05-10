@@ -445,12 +445,17 @@ class ASAPXYZ:
         # load from xyz file
         try:
             # retrieve the descriptor vectors --- both of these throw a ValueError if any are missing or are of wrong shape
-            desc = np.hstack(
-                np.vstack([a.info[desc_name] for a in self.frames]) for desc_name in desc_name_list)
+            # NumPy >= 1.20 deprecates passing a generator to np.hstack; wrap in a list.
+            desc = np.hstack([
+                np.vstack([a.info[desc_name] for a in self.frames]) for desc_name in desc_name_list
+            ])
             print("Use global descriptor matrix with shape: ", np.shape(desc))
-        except:
-            print(desc[-1])
-            print("Cannot find the specified descriptors from xyz")
+        except ValueError as e:
+            print("Error retrieving descriptor vectors:", e)
+        except KeyError as e:
+            print("Error: Missing descriptor in info:", e)
+        except Exception as e:
+            print("An unexpected error occurred:", e)
 
         try:
             # get the atomic descriptors with the same name

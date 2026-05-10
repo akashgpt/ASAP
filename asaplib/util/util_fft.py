@@ -48,7 +48,7 @@ def fftranform(x, dlen=10000):
     window = len(x) // dlen
     # print dlen
     omega0 = 2.0 * np.pi / (dlen - 1) / dt
-    xomega = np.zeros((dlen, 2), dtype=np.complex_)
+    xomega = np.zeros((dlen, 2), dtype=np.complex128)
     xomega[0:dlen // 2 + 1, 0] = np.arange(dlen // 2 + 1) * omega0
     xomega[dlen // 2 + 1:, 0] = np.arange(dlen // 2, 0, -1) * omega0 * -1
 
@@ -87,7 +87,7 @@ def fftcrosscorr(x, y, dlen=10000):
     dt = x[1, 0] - x[0, 0]  # assume the timestep is constant
     window = len(x) // dlen
     omega0 = 2.0 * np.pi / (dlen - 1) / dt
-    cxyomega = np.zeros((dlen, 2), dtype=np.complex_)
+    cxyomega = np.zeros((dlen, 2), dtype=np.complex128)
     cxyomega[0:dlen // 2 + 1, 0] = np.arange(dlen // 2 + 1) * omega0
     cxyomega[dlen // 2 + 1:, 0] = np.arange(dlen // 2, 0, -1) * omega0 * -1
 
@@ -121,7 +121,7 @@ def rfftranform(x, dlen=10000):
     window = len(x) // dlen
     # print dlen
     omega0 = 2.0 * np.pi / dlen / dt
-    xomega = np.zeros((dlen // 2 + 1, 2), dtype=np.complex_)
+    xomega = np.zeros((dlen // 2 + 1, 2), dtype=np.complex128)
     xomega[:, 0] = np.arange(dlen // 2 + 1) * omega0
 
     for i in range(window):
@@ -159,7 +159,7 @@ def rfftcrosscorr(x, y, dlen=10000):
     dt = x[1, 0] - x[0, 0]  # assume the timestep is constant
     window = len(x) // dlen
     omega0 = 2.0 * np.pi / dlen / dt
-    cxyomega = np.zeros((dlen // 2 + 1, 2), dtype=np.complex_)
+    cxyomega = np.zeros((dlen // 2 + 1, 2), dtype=np.complex128)
     cxyomega[:, 0] = np.arange(dlen // 2 + 1) * omega0
 
     for i in range(window):

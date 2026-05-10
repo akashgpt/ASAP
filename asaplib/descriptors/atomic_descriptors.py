@@ -165,9 +165,15 @@ class Atomic_Descriptor_SOAP(Atomic_Descriptor_Base):
 
     def create(self, frame):
         from dscribe.descriptors import SOAP
+        # The boolean `crossover` kwarg was deprecated in dscribe 2.0 and
+        # removed in 2.1+. The replacement is `compression={"mode": ...}`.
+        # Mapping that preserves ASAP's previous semantics:
+        #   crossover=True  -> compression={"mode": "off"}        (full element-pair coupling, dscribe-2 default)
+        #   crossover=False -> compression={"mode": "crossover"}  (drop crossover terms)
+        compression_mode = "off" if self.crossover else "crossover"
         self.soap = SOAP(species=self.species, r_cut=self.cutoff, n_max=self.n, l_max=self.l,
-                         sigma=self.g, rbf=self.rbf, crossover=self.crossover, average='off',
-                         periodic=self._get_pbc(frame))
+                         sigma=self.g, rbf=self.rbf, compression={"mode": compression_mode},
+                         average='off', periodic=self._get_pbc(frame))
 
         # notice that we return the acronym here!!!
         return self.acronym, self.soap.create(frame, n_jobs=1)
@@ -304,6 +310,16 @@ class Atomic_Descriptor_LMBTR(Atomic_Descriptor_Base):
 
 class Atomic_Descriptor_LMBTR_K2(Atomic_Descriptor_LMBTR):
     def __init__(self, desc_spec):
+        # LMBTR was rewritten in dscribe >= 2.0. The old `flatten`, `k2`, and
+        # `k3` kwargs no longer exist -- they were replaced by `geometry={...}`,
+        # `grid={...}`, and `weighting={...}` dicts on a single LMBTR object.
+        # ASAP's LMBTR_K2 / LMBTR_K3 wrappers have NOT been ported to that
+        # API. Use SOAP or ACSF, or pin dscribe<2 if LMBTR is required.
+        raise NotImplementedError(
+            "Atomic_Descriptor_LMBTR_K2 is not compatible with dscribe >= 2.0 "
+            "(the LMBTR API was rewritten upstream). "
+            "Use SOAP or ACSF, or pin dscribe<2 if LMBTR_K2 is required."
+        )
 
         super().__init__(desc_spec)
 
@@ -330,6 +346,13 @@ class Atomic_Descriptor_LMBTR_K2(Atomic_Descriptor_LMBTR):
 
 class Atomic_Descriptor_LMBTR_K3(Atomic_Descriptor_LMBTR):
     def __init__(self, desc_spec):
+        # See Atomic_Descriptor_LMBTR_K2 above -- same upstream rewrite is
+        # required for the K3 case.
+        raise NotImplementedError(
+            "Atomic_Descriptor_LMBTR_K3 is not compatible with dscribe >= 2.0 "
+            "(the LMBTR API was rewritten upstream). "
+            "Use SOAP or ACSF, or pin dscribe<2 if LMBTR_K3 is required."
+        )
 
         super().__init__(desc_spec)
 

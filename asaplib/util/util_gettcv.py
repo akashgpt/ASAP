@@ -22,7 +22,7 @@ def gettxv(xt, dt=1):
 
 def getcomplextxv(xt, dt=1):
     # assume the timestep is constant
-    txv = np.zeros((len(xt) - 2, 3), dtype=np.complex_)
+    txv = np.zeros((len(xt) - 2, 3), dtype=np.complex128)
     mx = np.mean(xt[:, 1]) + 1j * np.mean(xt[:, 2])
     # print mx
     for i in range(len(xt) - 2):
@@ -33,7 +33,7 @@ def getcomplextxv(xt, dt=1):
 
 
 def getfftxv(fxx):
-    fdxx = np.zeros((len(fxx), 2), dtype=np.complex_)
+    fdxx = np.zeros((len(fxx), 2), dtype=np.complex128)
     for i, f in enumerate(fxx):
         fdxx[i, 0] = fxx[i, 0]
         fdxx[i, 1] = 1j * fxx[i, 0] * fxx[i, 1]
