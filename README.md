@@ -2,10 +2,39 @@
   <img src="ASAP-logo.png" width="200" title="logo">
 </p>
 
-# ASAP 
+# ASAP
 Automatic Selection And Prediction tools for materials and molecules
 
 [![DOI](https://zenodo.org/badge/201763628.svg)](https://zenodo.org/badge/latestdoi/201763628)
+
+> **`ALCHEMY` branch — modernized for NumPy 2.x / Python 3.10+ / dscribe 2.x.**
+>
+> This branch lives at <https://github.com/akashgpt/ASAP/tree/ALCHEMY>
+> and is a near-drop-in replacement for upstream
+> [`BingqingCheng/ASAP@master`](https://github.com/BingqingCheng/ASAP/tree/master).
+>
+> Key differences vs. upstream:
+> - `np.complex_` &rarr; `np.complex128` (removed in NumPy 2.0).
+> - `collections.Iterable` &rarr; `collections.abc.Iterable` (removed in Python 3.10).
+> - `np.hstack(generator)` &rarr; `np.hstack([list])` (NumPy 1.20+ deprecation).
+> - `ASAPXYZ.get_descriptors`: typed `except` handlers instead of bare `except:`.
+> - SOAP: maps the legacy `crossover=` boolean to dscribe 2.x's
+>   `compression={"mode": ...}` API. Works against `dscribe 2.0.x` *and*
+>   `dscribe >= 2.1` (where the original `crossover=` kwarg was removed).
+> - LMBTR_K2 / LMBTR_K3 currently raise `NotImplementedError` &mdash; the
+>   underlying `k2=`/`k3=` API was removed in dscribe 2.x and the wrappers
+>   need a port to the new `geometry`/`grid`/`weighting` schema. **Use SOAP
+>   or ACSF**, or pin `dscribe<2` if LMBTR is required.
+> - `setup.py`: dropped hard upper-bounds on `numpy`/`scipy`/`scikit-learn`/
+>   `ase`/`matplotlib`; the floor is now `dscribe>=2.0,<3`.
+> - `install.sh`: switched from the deprecated `python3 setup.py install --user`
+>   to `python -m pip install .`.
+> - Added `primary_install.sh`: one-shot conda env + ASAP installer for
+>   green-field setups (see "Installation &amp; requirements" below).
+>
+> Verified end-to-end on a 4001-frame, 360-atom He/MgSiO3 trajectory: SOAP
+> descriptors agree with the legacy `dscribe 1.2.2` path to ~1e-13 and FPS
+> frame selection is bit-identical.
 
 ### [Documentation](https://bingqingcheng.github.io/index.html) (in progress)
 
@@ -95,30 +124,91 @@ Using `asap map`, a png figure is generated. In addition, the code also output t
 
 ### Installation & requirements
 
-python 3
+This branch supports **Python 3.10+** and is verified against **NumPy 2.x**
+and **dscribe 2.0–2.1**. Older Python 3.7–3.9 may still work but is no
+longer the target.
 
-Installation:
+#### Option A — clone this branch (recommended for the modernized stack)
+
+```bash
+git clone -b ALCHEMY https://github.com/akashgpt/ASAP.git
+cd ASAP
+```
+
+Then choose **one** of the two install paths below.
+
+##### A1. Lightweight install into an environment you already have
+
+If you already have an active conda or virtualenv with the runtime deps
+installed, just:
+
+```bash
+bash install.sh        # equivalent to `python -m pip install .`
+```
+
+This is the right choice when you're iterating on the source and only
+need to re-install ASAP itself.
+
+##### A2. One-shot conda env + ASAP installer (green-field)
+
+For a clean conda environment from scratch:
+
+```bash
+bash primary_install.sh        # creates env "asap", installs deps + ASAP
+bash primary_install.sh -f     # same, but force-rebuild if env exists
+ENV_NAME=foo bash primary_install.sh   # or pick a different env name
+```
+
+This script:
+1. Bootstraps `conda` into the non-interactive shell.
+2. Creates / reuses the target conda environment.
+3. Installs ASAP's runtime dependencies via `conda-forge`.
+4. Installs ASAP itself with `pip install --no-deps .`.
+
+All output is mirrored to `log.primary_install`.
+
+#### Option B — install from the upstream PyPI release
+
+The `asaplib` package on PyPI is from the upstream
+[`BingqingCheng/ASAP`](https://github.com/BingqingCheng/ASAP) repository
+and **does not include the modernization patches in this branch**. It pins
+old versions of NumPy/SciPy/scikit-learn/dscribe; use it only if you need
+the original behaviour.
 
 ```bash
 pip install asaplib
 ```
 
-or (after git clone https://github.com/BingqingCheng/ASAP)
+#### Runtime dependencies
 
-```bash
-pip install .
-```
+`setup.py` declares these and resolves the latest mutually-compatible
+versions when installed via `pip` or `conda`:
 
-*This should automatically install any depedencies.*
+`dscribe>=2.0,<3`, `click>=7.0`, `numpy`, `scipy`, `scikit-learn`,
+`ase`, `umap-learn`, `PyYAML`, `tqdm`, `pandas`.
 
-List of requirements:
+The lower bound on `dscribe` is hard:
 
-+ numpy scipy scikit-learn json ase dscribe umap-learn PyYAML click
+- `dscribe 1.x` is incompatible with NumPy 2.x.
+- `dscribe 2.x` renamed SOAP/ACSF kwargs (`rcut`/`nmax`/`lmax` &rarr;
+  `r_cut`/`n_max`/`l_max`) and replaced the SOAP `crossover=` boolean with
+  `compression={"mode": ...}`. This branch maps the old API internally so
+  existing user configs keep working.
 
-Add-Ons:
-+ (for finding symmetries of crystals) spglib 
-+ (for annotation without overlaps) adjustText
-+ The FCHL19 representation requires code from the development brach of the QML package. Instructions on how to install the QML package can be found on https://www.qmlcode.org/installation.html.
+#### Add-Ons (optional)
+
+- (for finding symmetries of crystals) `spglib`
+- (for annotation without overlaps) `adjustText`
+- The FCHL19 representation requires the development branch of the QML
+  package — see <https://www.qmlcode.org/installation.html>.
+
+#### Known limitation in this branch
+
+The LMBTR wrappers (`Atomic_Descriptor_LMBTR_K2`, `_K3`) raise
+`NotImplementedError` on instantiation: the dscribe 2.x rewrite of the
+LMBTR API (`geometry` / `grid` / `weighting` dicts in place of `k2=`/`k3=`)
+has not been ported. **Use SOAP or ACSF**, or pin `dscribe<2` and use
+upstream master, if LMBTR is required.
 
 ### Additional tools
 In the directory ./scripts/ you can find a selection of other python tools.
