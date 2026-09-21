@@ -85,12 +85,20 @@ class Global_Descriptors:
         else:
             raise NotImplementedError
 
-    def compute(self, frame):
+    def compute(self, frame, keep_atomic=True):
         """
         compute the global descriptor vector and atomic descriptor matrix (if any) for a frame
         Parameters
         ----------
         frame: ASE atom object. Coordinates of a frame.
+        keep_atomic: bool
+                 return the per-atom descriptors as well. When False they are computed
+                 (the global descriptor is reduced from them) but dropped immediately
+                 instead of being returned. For SOAP the per-atom block is a
+                 [n_atoms x n_features] matrix that is orders of magnitude larger than
+                 the reduced global vector, so returning it when nobody asked for it
+                 dominates both the memory held by the caller and, under
+                 multiprocessing, the data pickled back from the worker.
 
         Returns
         -------
@@ -104,7 +112,9 @@ class Global_Descriptors:
         global_desc_dict = {}
         atomic_desc_dict = {}
         for element in self.desc_spec_dict.keys():
-            global_desc_dict[element], atomic_desc_dict[element] = self.engines[element].create(frame)
+            global_desc_dict[element], atomic_desc_now = self.engines[element].create(frame)
+            if keep_atomic:
+                atomic_desc_dict[element] = atomic_desc_now
         return global_desc_dict, atomic_desc_dict
 
 
