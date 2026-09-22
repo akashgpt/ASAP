@@ -32,9 +32,36 @@ Automatic Selection And Prediction tools for materials and molecules
 > - Added `primary_install.sh`: one-shot conda env + ASAP installer for
 >   green-field setups (see "Installation &amp; requirements" below).
 >
+> Performance / memory (2026-09-21, commit `d7c73d5`):
+> - `Global_Descriptors.compute(frame, keep_atomic=True)`: when the caller does
+>   not want per-atom descriptors, they are dropped inside the worker instead of
+>   being returned. Under `gen_desc -np N` every worker used to pickle back its
+>   full `[n_atoms x n_features]` SOAP matrix (2.7 MB/frame for 320 atoms with
+>   crossover) and the parent held all of them &mdash; measured **14.4 GB at
+>   `-np 8` on a 5001-frame trajectory, independent of `N`**. Now 1.8 GB; memory
+>   scales with the number of workers (~0.2 GB each), not with trajectory length.
+> - `ASAPXYZ.__init__`: distinct species are accumulated in a `set` instead of
+>   listing every atom of every frame and `np.unique`-ing it (7x faster on that
+>   loop, &minus;0.09 GB peak); `len(frame)` instead of `len(frame.get_positions())`.
+> - Fix: the parallel branch of `compute_global_descriptors` assigned results by
+>   `enumerate`, so a subset request (`sbs=[3, 7]`) landed on frames `0, 1`.
+>   Now `zip(sbs, results)`. (Latent for `gen_desc`, which always passes all frames.)
+>
+> Output is bit-identical to the previous branch state: verified on 10 random
+> NH3/MgSiO3 frames (288&ndash;359 atoms, 10 compositions) and on a full
+> 5001-frame production trajectory, serial and `-np 4/8`, including `--peratom`.
+> Serial wall time is unchanged (the dscribe kernel is ~70 % of it). Note that
+> `-np` helps the latency of one trajectory but wastes cores: for throughput
+> across many trajectories run several serial `gen_desc` processes instead.
+>
 > Verified end-to-end on a 4001-frame, 360-atom He/MgSiO3 trajectory: SOAP
 > descriptors agree with the legacy `dscribe 1.2.2` path to ~1e-13 and FPS
 > frame selection is bit-identical.
+>
+> Branch history vs. upstream `master` (`fe15d45`):
+> `9044e60` modernize (NumPy 2.x / Python 3.10+ / dscribe 2.x) &middot;
+> `5b635a5` `primary_install.sh` &middot; `dcc5aa9` README/install docs &middot;
+> `d7c73d5` performance / memory (above).
 
 ### [Documentation](https://bingqingcheng.github.io/index.html) (in progress)
 
