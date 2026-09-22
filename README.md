@@ -54,6 +54,21 @@ Automatic Selection And Prediction tools for materials and molecules
 > `-np` helps the latency of one trajectory but wastes cores: for throughput
 > across many trajectories run several serial `gen_desc` processes instead.
 >
+> BLAS thread cap in the write path (2026-09-22):
+> - `ASAPXYZ.write()` / `write_chemiscope()` run their per-frame loop inside
+>   `threadpoolctl.threadpool_limits(limits=_BLAS_THREAD_LIMIT)` &mdash; default 1,
+>   parsed once at import; `ASAP_BLAS_THREADS=n` raises it; `OMP_`/`MKL_NUM_THREADS`
+>   are deliberately not consulted. The per-frame ASE `Atoms.wrap()` issues a
+>   3&times;3 solve with N right-hand sides and an N&times;3 matmul; with an
+>   MKL-backed NumPy on an OpenMP runtime these fork the
+>   full thread team, which then spin-waits `KMP_BLOCKTIME` (200 ms) after each
+>   call while the next frame is formatted. Measured, 20 frames &times; 320 atoms:
+>   **55.6 &rarr; 3.9 CPU-s** (Perlmutter, MKL 2026.1 / llvm-openmp, 244 hardware
+>   threads) and 19.7 &rarr; 3.1 CPU-s (Stellar, same build family); output
+>   bit-identical. The compute phase (dscribe SOAP) never forks and is untouched;
+>   OpenBLAS-backed environments were never affected. `threadpoolctl` (already a
+>   scikit-learn dependency) is now declared in `setup.py`.
+>
 > Verified end-to-end on a 4001-frame, 360-atom He/MgSiO3 trajectory: SOAP
 > descriptors agree with the legacy `dscribe 1.2.2` path to ~1e-13 and FPS
 > frame selection is bit-identical.
@@ -208,7 +223,7 @@ pip install asaplib
 versions when installed via `pip` or `conda`:
 
 `dscribe>=2.0,<3`, `click>=7.0`, `numpy`, `scipy`, `scikit-learn`,
-`ase`, `umap-learn`, `PyYAML`, `tqdm`, `pandas`.
+`ase`, `umap-learn`, `PyYAML`, `tqdm`, `pandas`, `threadpoolctl`.
 
 The lower bound on `dscribe` is hard:
 
@@ -247,6 +262,14 @@ Author: Akash Gupta
 This branch (`ALCHEMY`) tracks upstream ASAP with a few changes, listed newest first.
 Technical detail for each is in the banner at the top of this file.
 
+- **2026-09-22 — no more thread spin while writing descriptors.** Before each
+  structure is written to `ASAP-desc.xyz` its atoms are wrapped back into the cell — two
+  tiny linear-algebra calls per structure. With an MKL-backed NumPy those calls wake MKL's
+  whole thread team, which then busy-waits for 200 ms while the next structure is
+  formatted: a run needing 4 CPU-seconds burned 55, and with many runs sharing a login
+  node passes took hours instead of minutes. The write loop now runs with one BLAS thread
+  (`ASAP_BLAS_THREADS=n` raises it). Descriptors are unchanged (bit-identical); the
+  descriptor computation itself and OpenBLAS-backed environments were never affected.
 - **2026-09-21 — lighter and safer parallel runs.** ASAP computes a descriptor for every
   atom and then averages it into one vector per structure. It used to hand the full per-atom
   block back even when only the average was wanted, so running `gen_desc` with several worker

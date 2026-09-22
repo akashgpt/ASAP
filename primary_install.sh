@@ -13,7 +13,7 @@
 #   2. Creates the conda environment named in $ENV_NAME (default: "asap"),
 #      reusing it if it already exists. Pass `-f` for a forced fresh rebuild.
 #   3. Installs ASAP's runtime dependencies via conda-forge (dscribe>=2.0,
-#      scipy, scikit-learn, ase, umap-learn, pyyaml, tqdm, pandas, click) so
+#      scipy, scikit-learn, ase, umap-learn, pyyaml, tqdm, pandas, threadpoolctl, click) so
 #      they can pull in modern versions cleanly.
 #   4. Installs ASAP itself via `pip install --no-deps .` -- since every
 #      runtime dep is already satisfied above, --no-deps avoids any second
@@ -125,7 +125,7 @@ conda activate "${ENV_NAME}"
 echo "Installing ASAP runtime dependencies (conda-forge) ..."
 conda install -y -c conda-forge "dscribe>=2.0,<3"
 conda install -y -c conda-forge "click>=7.0"
-conda install -y -c conda-forge scipy scikit-learn ase umap-learn pyyaml tqdm pandas
+conda install -y -c conda-forge scipy scikit-learn ase umap-learn pyyaml tqdm pandas threadpoolctl
 
 #-----------------------------------------------------------------------------
 # Step 4: install ASAP itself.

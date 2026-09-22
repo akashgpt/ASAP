@@ -21,7 +21,7 @@ setuptools.setup(
     ],
     install_requires=[
         'dscribe>=2.0,<3', 'click>=7.0', 'numpy', 'scipy', 'scikit-learn',
-        'ase', 'umap-learn', 'PyYAML', 'tqdm', 'pandas'
+        'ase', 'umap-learn', 'PyYAML', 'tqdm', 'pandas', 'threadpoolctl'
     ],
     extras_require={'testing': ['pytest>=5.0']},
     python_requires='>=3.7',

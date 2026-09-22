@@ -12,10 +12,23 @@ from ase.io import read, write
 from ase.build import niggli_reduce
 from tqdm.auto import tqdm
 from joblib import Parallel, delayed
+from threadpoolctl import threadpool_limits
 import pandas as pd
 
 from ..io import randomString, NpEncoder
 from ..descriptors import Atomic_Descriptors, Global_Descriptors
+
+
+# BLAS/OpenMP thread cap for the per-frame write loops (ASE ``Atoms.wrap`` per frame).
+# wrap() issues a 3x3 solve with N right-hand sides and an Nx3 matmul per frame. An
+# OpenMP-threaded BLAS (MKL) forks its whole thread team for these microsecond-sized calls
+# and spin-waits KMP_BLOCKTIME (200 ms) after each one while the next frame is being
+# formatted: measured 55 CPU-s for 4 CPU-s of work on 20 frames, and under login-node
+# concurrency passes took 1-2 h instead of 1-4 min. Threads never help here, so the default
+# is 1; ASAP_BLAS_THREADS=n raises it. OMP_/MKL_NUM_THREADS are deliberately not consulted
+# (callers export those process-wide for other reasons). Parsed once at import so a
+# malformed value fails before any descriptor is computed.
+_BLAS_THREAD_LIMIT = max(1, int(os.environ.get("ASAP_BLAS_THREADS", 1)))
 
 
 class ASAPXYZ:
@@ -738,11 +751,13 @@ class ASAPXYZ:
         if os.path.isfile(str(filename) + ".xyz"):
             os.rename(str(filename) + ".xyz", "bck." + str(filename) + ".xyz")
 
-        for i in sbs:
-            if wrap_output: self.frames[i].wrap()
-            self._write_computed_descriptors_to_xyz(self.global_desc[i], self.frames[i])
-            self._write_computed_atomic_descriptors_to_xyz(self.atomic_desc[i], self.frames[i])
-            write(str(filename) + ".xyz", self.frames[i], append=True)
+        # wrap() must not fork the BLAS thread team between frames; see _BLAS_THREAD_LIMIT
+        with threadpool_limits(limits=_BLAS_THREAD_LIMIT):
+            for i in sbs:
+                if wrap_output: self.frames[i].wrap()
+                self._write_computed_descriptors_to_xyz(self.global_desc[i], self.frames[i])
+                self._write_computed_atomic_descriptors_to_xyz(self.atomic_desc[i], self.frames[i])
+                write(str(filename) + ".xyz", self.frames[i], append=True)
 
         # this acronym state file lets us know how the descriptors correspond to the outputs in the xyz file
         if save_acronym:
@@ -769,10 +784,12 @@ class ASAPXYZ:
         if os.path.isfile(str(filename) + ".xyz"):
             os.rename(str(filename) + ".xyz", "bck." + str(filename) + ".xyz")
 
-        for i in sbs:
-            if wrap_output: self.frames[i].wrap()
-            self._write_computed_descriptors_to_xyz(self.global_desc[i], self.frames[i])
-            self._write_computed_atomic_descriptors_to_xyz(self.atomic_desc[i], self.frames[i])
+        # wrap() must not fork the BLAS thread team between frames; see _BLAS_THREAD_LIMIT
+        with threadpool_limits(limits=_BLAS_THREAD_LIMIT):
+            for i in sbs:
+                if wrap_output: self.frames[i].wrap()
+                self._write_computed_descriptors_to_xyz(self.global_desc[i], self.frames[i])
+                self._write_computed_atomic_descriptors_to_xyz(self.atomic_desc[i], self.frames[i])
 
         # this acronym state file lets us know how the descriptors correspond to the outputs in the xyz file
         if save_acronym:
