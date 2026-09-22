@@ -248,27 +248,19 @@ If a conda environment is used, you can copy this file to `$CONDA_PREFIX/etc/con
 
 Author: Akash Gupta
 
-Changes on the `ALCHEMY` branch relative to upstream
-[`BingqingCheng/ASAP@master`](https://github.com/BingqingCheng/ASAP/tree/master) (`fe15d45`),
-newest first. Details for each item are in the branch banner at the top of this file.
+This branch (`ALCHEMY`) tracks upstream ASAP with a few changes, listed newest first.
+Technical detail for each is in the banner at the top of this file.
 
-- **2026-09-21 — performance / memory** (`d7c73d5`, documented `d32f510`).
-  `Global_Descriptors.compute(frame, keep_atomic=True)` drops per-atom descriptors inside
-  the worker when they are not requested, so `gen_desc -np N` no longer accumulates every
-  frame's `[n_atoms x n_features]` SOAP matrix in the parent (14.4 GB → 1.8 GB at `-np 8` on a
-  5001-frame trajectory; memory now scales with worker count, not trajectory length).
-  `ASAPXYZ.__init__` collects species with a `set` instead of listing every atom. Fixed the
-  parallel branch of `compute_global_descriptors` assigning results by `enumerate` instead of
-  the requested `sbs` indices. Output bit-identical to the previous branch state (10 random
-  NH3/MgSiO3 frames + a full 5001-frame trajectory, serial and `-np 4/8`, incl. `--peratom`).
-- **2026-09 — installer + docs** (`5b635a5`, `dcc5aa9`). Added `primary_install.sh`, a one-shot
-  conda env + ASAP installer; README rewritten to describe the modernized stack and install
-  options; `install.sh` now `python -m pip install .`.
-- **2026-09 — modernization for NumPy 2.x / Python 3.10+ / dscribe 2.x** (`9044e60`).
-  `np.complex_` → `np.complex128`; `collections.Iterable` → `collections.abc.Iterable`;
-  `np.hstack(generator)` → list; typed `except` handlers; SOAP `crossover=` mapped onto
-  dscribe 2's `compression={"mode": ...}` (works on dscribe 2.0.x and >= 2.1); LMBTR_K2/K3 raise
-  `NotImplementedError` (dscribe 2 rewrote that API — use SOAP or ACSF, or pin `dscribe<2`);
-  `setup.py` drops the `numpy<=1.24.3` / `dscribe==2.0.1` / `scipy` / `scikit-learn` / `ase` /
-  `matplotlib` upper bounds (floor `dscribe>=2.0,<3`). Verified against the legacy dscribe 1.2.2
-  path on a 4001-frame, 360-atom He/MgSiO3 trajectory (SOAP to ~1e-13; FPS bit-identical).
+- **2026-09-21 — lighter and safer parallel runs.** ASAP computes a descriptor for every
+  atom and then averages it into one vector per structure. It used to hand the full per-atom
+  block back even when only the average was wanted, so running `gen_desc` with several worker
+  processes (`-np`) made memory grow with the length of the trajectory rather than with the
+  number of workers. The per-atom block is now dropped where it is made. Results are unchanged
+  (verified bit-for-bit); a related indexing slip in the parallel path was fixed on the way.
+- **2026-09 — one-step install.** `primary_install.sh` builds a conda environment and installs
+  ASAP into it in one go; the README was rewritten around the modernized stack.
+- **2026-09 — works on current Python and NumPy.** Upstream ASAP pins old versions of NumPy,
+  SciPy and dscribe. This branch removes those pins and adapts to the APIs that changed in
+  NumPy 2 / Python 3.10+ / dscribe 2, so it installs cleanly in today's environments. One
+  descriptor family (LMBTR) is not ported and now says so explicitly; SOAP and ACSF are
+  unaffected, and SOAP output matches the old stack to numerical precision.
