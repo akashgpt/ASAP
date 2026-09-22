@@ -57,11 +57,7 @@ Automatic Selection And Prediction tools for materials and molecules
 > Verified end-to-end on a 4001-frame, 360-atom He/MgSiO3 trajectory: SOAP
 > descriptors agree with the legacy `dscribe 1.2.2` path to ~1e-13 and FPS
 > frame selection is bit-identical.
->
-> Branch history vs. upstream `master` (`fe15d45`):
-> `9044e60` modernize (NumPy 2.x / Python 3.10+ / dscribe 2.x) &middot;
-> `5b635a5` `primary_install.sh` &middot; `dcc5aa9` README/install docs &middot;
-> `d7c73d5` performance / memory (above).
+
 
 ### [Documentation](https://bingqingcheng.github.io/index.html) (in progress)
 
