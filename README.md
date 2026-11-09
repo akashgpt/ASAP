@@ -299,6 +299,13 @@ Author: Akash Gupta
 This branch (`ALCHEMY`) tracks upstream ASAP with a few changes, listed newest first.
 Technical detail for each is in the banner at the top of this file.
 
+- **2026-11-09 — lossless binary descriptor handoff.** Opt-in `--output-format npz`
+  avoids printing and reparsing descriptor text; XYZ remains the default. On one
+  StellarAI workload (5001 frames), generation plus selection fell from 116.86 to
+  69.66 s (1.68×), with exact descriptors and selected frames; output shrank from
+  657 to 210 MB. Generation peak memory rose from 0.44 to 0.83 GiB, while the larger
+  sequential-stage peak fell from 0.99 to 0.83 GiB. See the
+  [binary handoff details](#lossless-binary-descriptor-handoff).
 - **2026-09-22 — no more thread spin while writing descriptors.** Before each
   structure is written to `ASAP-desc.xyz` its atoms are wrapped back into the cell — two
   tiny linear-algebra calls per structure. With an MKL-backed NumPy those calls wake MKL's
