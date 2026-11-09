@@ -84,6 +84,8 @@ def select(ctx, fxyz, design_matrix,
 
 
 @asap.group('gen_desc')
+@click.option('--output-format', type=click.Choice(['xyz', 'npz']), default='xyz',
+              show_default=True, help='Global descriptor handoff format (npz excludes per-atom output).')
 @click.option('--stride', '-s',
               help='Read in the xyz trajectory with X stide. Default: read/compute all frames.',
               default=1)
@@ -96,30 +98,40 @@ def select(ctx, fxyz, design_matrix,
 @file_input_format_options
 @file_output_options
 @para_options
-def gen_desc(ctx, in_file, fxyz, fxyz_format, prefix, stride, periodic, number_processes):
-    """
-    Descriptor generation command
-    This command function evaluated before the descriptor specific ones,
-    we setup the general stuff here, such as read the files.
-    """
+def gen_desc(ctx: click.Context, in_file: str | None, fxyz: str | None,
+	fxyz_format: str | None, prefix: str | None, stride: int, periodic: bool,
+	number_processes: int, output_format: str) -> None:
+	"""Set up input and output options before descriptor-specific commands.
 
-    if not fxyz and not in_file:
-        return
+	Args:
+		ctx: Click context holding the descriptor generation state.
+		in_file: Optional descriptor state file.
+		fxyz: Input trajectory path or wildcard pattern.
+		fxyz_format: Optional ASE input format options.
+		prefix: Output filename prefix.
+		stride: Read every stride-th source frame.
+		periodic: Whether periodic boundaries may be used.
+		number_processes: Number of descriptor workers.
+		output_format: Global descriptor handoff format.
+	"""
 
-    if in_file:
-        # Here goes the routine to compute the descriptors according to the
-        # state file(s)
-        ctx.obj.update(load_in_file(in_file))
+	if not fxyz and not in_file:
+		return
 
-    if prefix is None: prefix = "ASAP-desc"
-    if fxyz is not None:
-        ctx.obj['data']['fxyz'] = fxyz
-        ctx.obj['data']['fxyz_format'] = fxyz_format
-        ctx.obj['data']['stride'] = stride
-        ctx.obj['data']['periodic'] = periodic
-    ctx.obj['desc_options']['prefix'] = prefix
-    ctx.obj['desc_options']['N_processes'] = number_processes
+	if in_file:
+		# Here goes the routine to compute the descriptors according to the
+		# state file(s)
+		ctx.obj.update(load_in_file(in_file))
 
+	if prefix is None: prefix = "ASAP-desc"
+	if fxyz is not None:
+		ctx.obj['data']['fxyz'] = fxyz
+		ctx.obj['data']['fxyz_format'] = fxyz_format
+		ctx.obj['data']['stride'] = stride
+		ctx.obj['data']['periodic'] = periodic
+	ctx.obj['desc_options']['prefix'] = prefix
+	ctx.obj['desc_options']['N_processes'] = number_processes
+	ctx.obj['desc_options']['output_format'] = output_format
 
 @gen_desc.command('soap')
 @click.option('--cutoff', '-c', type=float,
@@ -183,7 +195,7 @@ def soap(ctx, tag, cutoff, nmax, lmax, atom_gaussian_width, crossover, rbf, univ
     ctx.obj['descriptors'][tag] = desc_spec
     # Compute the save the descriptors
     output_desc(ctx.obj['asapxyz'], ctx.obj['descriptors'], ctx.obj['desc_options']['prefix'], peratom,
-                ctx.obj['desc_options']['N_processes'])
+                ctx.obj['desc_options']['N_processes'], ctx.obj['desc_options']['output_format'])
 
 
 @gen_desc.command('acsf')
@@ -220,7 +232,7 @@ def acsf(ctx, tag, cutoff, universal_acsf,
     ctx.obj['descriptors'][tag] = desc_spec
     # Compute the save the descriptors
     output_desc(ctx.obj['asapxyz'], ctx.obj['descriptors'], ctx.obj['desc_options']['prefix'], peratom,
-                ctx.obj['desc_options']['N_processes'])
+                ctx.obj['desc_options']['N_processes'], ctx.obj['desc_options']['output_format'])
 
 
 @gen_desc.command('cm')
@@ -234,7 +246,7 @@ def cm(ctx, tag):
     ctx.obj['descriptors'][tag] = {'cm': {'type': "CM"}}
     # Compute the save the descriptors
     output_desc(ctx.obj['asapxyz'], ctx.obj['descriptors'], ctx.obj['desc_options']['prefix'], False,
-                ctx.obj['desc_options']['N_processes'])
+                ctx.obj['desc_options']['N_processes'], ctx.obj['desc_options']['output_format'])
 
 
 @gen_desc.command('run')
@@ -244,7 +256,8 @@ def run(ctx):
     # load up the xyz
     ctx.obj['asapxyz'] = load_asapxyz(ctx.obj['data'])
     # Compute the save the descriptors
-    output_desc(ctx.obj['asapxyz'], ctx.obj['descriptors'], ctx.obj['desc_options']['prefix'])
+    output_desc(ctx.obj['asapxyz'], ctx.obj['descriptors'], ctx.obj['desc_options']['prefix'],
+                output_format=ctx.obj['desc_options']['output_format'])
 
 
 @asap.group('cluster', chain=True)

@@ -88,6 +88,43 @@ This tutorial style paper covers:
 
 * Snippets of `asap` commands that were used to analyze the examples and make figures. 
 
+### Lossless binary descriptor handoff
+
+`asap gen_desc --fxyz npt.dump --output-format npz soap ...` writes
+`ASAP-desc.npz` instead of `ASAP-desc.xyz`, together with the existing state YAML.
+The default remains XYZ. Binary output supports global descriptors; use XYZ when
+requesting `--peratom`. SOAP settings and descriptor computation are unchanged.
+
+The uncompressed NPZ contains float64 descriptor values without decimal formatting,
+plus key-to-column offsets, the canonical `*` descriptor key order, sorted atomic
+numbers, raw float64 cell matrices, stride, and stride-scaled loaded frame order.
+For a single trajectory those indices map to original source rows. With multiple
+input files they describe the loaded sequence, not per-file original row IDs.
+Numeric frame info such as `Time` remains available by its explicit key; as in ASAP's
+XYZ reader, `*` selects descriptor prefixes rather than time metadata. All frame info
+must have consistent real numeric keys and widths. Integer metadata that cannot
+be represented exactly as float64 is rejected rather than silently rounded. Atom coordinates remain in the original
+trajectory; this handoff is for selection, not a standalone geometry file.
+
+```python
+from asaplib.data import read_descriptor_bundle, descriptor_bundle_matrix
+
+bundle = read_descriptor_bundle("ASAP-desc.npz")
+matrix = descriptor_bundle_matrix(bundle, ["*"])
+cells = bundle["cells"]
+species = bundle["species"]  # atomic numbers, sorted increasingly
+```
+
+`read_descriptor_bundle` uses `allow_pickle=False` and validates schema, shapes,
+finite values, species and frame ordering. Version 1 fields are `format_version`,
+`descriptors`, `descriptor_keys`, `descriptor_offsets`, `default_descriptor_keys`,
+`species`, `cells`, `frame_indices`, and `source_stride`. Explicit keys or ASAP-style
+wildcard patterns can select individual column blocks. `write_descriptor_bundle`
+reuses the existing ASAP descriptor extraction and publishes the completed archive
+with an atomic replacement. Callers must remove old expected outputs before starting
+a new calculation, check the producer's exit status, and explicitly pass the new
+archive path. The archive does not prove freshness against a changed source trajectory.
+
 ### Basic usage
 
 Type `asap` and use the sub-commands for various tasks.

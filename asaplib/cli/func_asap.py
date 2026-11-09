@@ -2,6 +2,12 @@
 functions used in cmd_asap.py
 """
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+	from asaplib.data import ASAPXYZ
+
+
 """for loading in_file"""
 
 
@@ -49,19 +55,32 @@ def set_reducer(reducer_type, element_wise, zeta):
     return reducer_func
 
 
-def output_desc(asapxyz, desc_spec, prefix, peratom=False, N_processes=8):
-    """
-    Compute and save the descriptors
-    """
-    for tag, desc in desc_spec.items():
-        # compute the descripitors
-        asapxyz.compute_global_descriptors(desc_spec_dict=desc,
-                                           sbs=[],
-                                           keep_atomic=peratom,
-                                           tag=tag,
-                                           n_process=N_processes)
-    asapxyz.write(prefix)
-    asapxyz.save_state(prefix)
+def output_desc(asapxyz: "ASAPXYZ", desc_spec: dict, prefix: str, peratom: bool = False,
+	N_processes: int = 8, output_format: str = "xyz") -> None:
+	"""Compute descriptors and save the requested handoff format.
+
+	Args:
+		asapxyz: Structures receiving the computed descriptors.
+		desc_spec: Descriptor specifications grouped by tag.
+		prefix: Output filename prefix.
+		peratom: Also retain per-atom descriptors in XYZ output.
+		N_processes: Number of descriptor workers.
+		output_format: 'xyz' for the existing text path, or 'npz' for global arrays.
+
+	Raises:
+		ValueError: Per-atom output was requested with the global-only format.
+	"""
+	if output_format == "npz" and peratom:
+		raise ValueError("Binary output supports global descriptors only; omit --peratom")
+	for tag, desc in desc_spec.items():
+		asapxyz.compute_global_descriptors(desc_spec_dict=desc, sbs=[],
+			keep_atomic=peratom, tag=tag, n_process=N_processes)
+	if output_format == "npz":
+		from asaplib.data import write_descriptor_bundle
+		write_descriptor_bundle(asapxyz, prefix)
+	else:
+		asapxyz.write(prefix)
+	asapxyz.save_state(prefix)
 
 
 """ for maps and fits """
